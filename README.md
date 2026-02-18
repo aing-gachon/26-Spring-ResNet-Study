@@ -33,6 +33,9 @@ A.ing 주니어 트랙 ResNet 세션은 ResNet에 대한 근본적인 이해를 
 ```text
 26-Spring-ResNet-Study/
 ├─ readme.md
+├─ Aing_resnet_from_scratch_blank.ipynb
+├─ resnet_cookbook.md
+├─ A.ing_resnet_cheat_sheet.md
 
 ```
 
@@ -40,7 +43,7 @@ A.ing 주니어 트랙 ResNet 세션은 ResNet에 대한 근본적인 이해를 
 
 | 이름 | 이메일 |
 |------|--------|
-| 정진용 |  |
+| 정진용 | wlsdyd5373@gachon.ac.kr |
 | 문예훈 |  |
 
 질문이나 도움이 필요하면 언제든 연락 주세요!<br>
