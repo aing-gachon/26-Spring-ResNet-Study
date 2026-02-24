@@ -1,184 +1,179 @@
-A.ing ResNet 쿡북
+# [A.ing](http://A.ing) ResNet CookBook
 
-### **\[Step 1\. Shortcut Option A \- Slicing\]**
+## **[1) Shortcut Option A (Identity + Zero Padding)]**
 
-* **사용 함수**: Python Slicing Syntax (`::step`)  
-* **패턴 예시**:  `x[:, :, ::stride, ::stride]` (Height와 Width 차원만 샘플링)  
-* **설명**: ResNet Identity Mapping 시, 메인 경로에서 Stride가 적용되어 Feature Map의 크기가 줄어든 경우 F(x) \+ x 연산이 불가능해집니다. 이를 해결하기 위해 입력값 x 에서도 동일한 간격으로 데이터를 추출하여 파라미터 없이 해상도를 맞춥니다.  
-* **주의 사항**  
-  * 높이와 너비 차원에 대해 Stride 값만큼 건너뛰며 데이터를 추출하세요.  
-  * 배치와 채널 차원은 건드리지 않아야 합니다.  
-* **Shape 흐름**  
-  * **Input:** `[32, 64, 56, 56]`  
-  * **Slicing (::2):** 가로/세로를 stride 간격으로 점프하며 선택  
-  * **Output:** `[32, 64, 28, 28]`
+### 1. Slicing
 
----
+- **사용 함수**: Python Slicing Syntax (`::step`)
+- **패턴**: `x[:, :, ::stride, ::stride]` (Height와 Width 차원만 샘플링)
+- **설명**: ResNet Identity Mapping 시, 메인 경로에서 Stride가 적용되어 Feature Map의 크기가 줄어든 경우 F(x) + x 연산이 불가능해집니다. 이를 해결하기 위해 입력값 x 에서도 동일한 간격으로 데이터를 추출하여 파라미터 없이 해상도를 맞춥니다.
+- **주의 사항**
+    - 높이와 너비 차원에 대해 Stride 값만큼 건너뛰며 데이터를 추출하세요.
+    - 배치와 채널 차원은 건드리지 않아야 합니다.
+- **Shape 흐름**
+    - **Input:** `[32, 64, 56, 56]`
+    - **Slicing (::2):** 가로/세로를 stride 간격으로 점프하며 선택
+    - **Output:** `[32, 64, 28, 28]`
 
-### **\[Step 2\. Shortcut Option A \- Zero Padding\]**
+### 2. Zero Padding
 
 다운샘플링된 텐서의 채널 수가 목표 출력 채널 수보다 적을 때, 0을 채워 차원을 확장하는 과정입니다.
 
-* **코드**  
-  * `torch.zeros()` : 0으로 채워진 텐서 생성  
-  * `torch.cat()` : 텐서 연결  
-  * `tensor.size()` : 텐서 크기 확인  
-* **패턴**  
-  * `torch.zeros(batch, ch, h, w)` : 지정된 크기의 0 텐서 생성 (device, dtype 일치 필수)  
-  * `torch.cat([A, B], dim=1)` : 채널 축(dim=1)을 기준으로 연결  
-* **코드 사용법**  
-  * **필요 채널 계산:** (목표 출력 채널) \- (현재 입력 채널)을 구하세요.  
-  * **0 생성:** 입력 텐서와 동일한 공간 크기를 가지면서, 위에서 계산한 부족한 채널만큼의 깊이를 가진 0 텐서를 만듭니다.  
-  * **결합:** 입력 텐서 뒤에 0 텐서를 이어 붙입니다.  
-* **Shape 흐름**  
-  * **Input:** `[32, 64, 28, 28]` (Step 1 결과)  
-  * **Zeros:** `[32, 64, 28, 28]` (새로 만든 0\)  
-  * **Output:** `[32, 128, 28, 28]`
+- **코드**
+    - `torch.zeros()` : 0으로 채워진 텐서 생성
+    - `torch.cat()` : 텐서 연결
+    - `tensor.size()` : 텐서 크기 확인
+- **패턴**
+    - `torch.zeros(batch, ch, h, w)` : 지정된 크기의 0 텐서 생성 (device, dtype 일치 필수)
+    - `torch.cat([A, B], dim=1)` : 채널 축(dim=1)을 기준으로 연결
+- 설명: ResNet Identity Mapping 시, 메인 경로에서 Convolution 연산 적용되어 Feature Map의 채널 수가 늘어난 경우 F(x) + x 연산이 불가능합니다. 이를 해결하기 위해 입력값 x 에서 부족한 채널 수만큼 0 행렬을 만들어 채웁니다.
+- **코드 사용법**
+    - **필요 채널 계산:** (목표 출력 채널) - (현재 입력 채널)을 구하세요.
+    - **0 생성:** 입력 텐서와 동일한 공간 크기를 가지면서, 위에서 계산한 부족한 채널만큼의 깊이를 가진 0 텐서를 만듭니다.
+    - **결합:** 입력 텐서 뒤에 0 텐서를 이어 붙입니다.
+- **Shape 흐름**
+    - **Input:** `[32, 64, 28, 28]` (Step 1 결과)
+    - **Zeros:** `[32, 64, 28, 28]` (새로 만든 0)
+    - **Output:** `[32, 128, 28, 28]`
 
 ---
 
-### **\[Step 3\. Shortcut Option B \- Projection\]**
+## **[2) Shortcut Option B  (Projection)]**
 
 1x1 합성곱을 사용하여 해상도 감소와 채널 확장을 동시에 수행하는 학습 가능한 숏컷 방식입니다.
 
-* **코드**  
-  * `nn.Conv2d()` : 합성곱 연산  
-  * `nn.BatchNorm2d()` : 배치 정규화  
-* **패턴**  
-  * `nn.Conv2d(in, out, kernel_size=1, ...)` : 픽셀 간 정보 교환 없이 채널만 변경  
-* **코드 사용법**  
-  * 커널 크기는 1로 고정하여 채널 간 연산만 수행합니다.  
-  * 공간 해상도를 줄이기 위해 메인 경로와 동일한 `stride`를 적용하세요.  
-  * 합성곱 뒤에는 반드시 `BatchNorm`을 연결해야 분포가 깨지지 않습니다.  
-* **Shape 흐름**  
-  * **Input:** `[32, 64, 56, 56]`  
-  * **Conv 1x1 (s=2):** 해상도 ½, 채널 2배  
-  * **Output:** `[32, 128, 28, 28]`
+- **코드**
+    - `nn.Conv2d()` : 합성곱 연산
+    - `nn.BatchNorm2d()` : 배치 정규화
+- **패턴**
+    - `nn.Conv2d(in, out, kernel_size=1, ...)` : 픽셀 간 정보 교환 없이 채널만 변경
+- 설명: Option A가 단순히 빈자리를 0으로 채우는 수동적인 방식이라면, Option B는 1×1 Convolution의 가중치를 통해 어떤 정보를 Shortcut로 보낼지 모델이 스스로 결정하는 능동적인 방식입니다. 이는 차원이 불일치하는 지점에서도 정보의 손실을 최소화하고 학습의 유연성을 높여줍니다.
+- **코드 사용법**
+    - 커널 크기는 1로 고정하여 채널 간 연산만 수행합니다.
+    - 공간 해상도를 줄이기 위해 메인 경로와 동일한 `stride`를 적용하세요.
+    - 합성곱 뒤에는 반드시 `BatchNorm`을 연결해야 분포가 깨지지 않습니다.
+- **Shape 흐름**
+    - **Input:** `[32, 64, 56, 56]`
+    - **Conv 1x1 (s=2):** 해상도 ½, 채널 2배
+    - **Output:** `[32, 128, 28, 28]`
 
 ---
 
-### **\[Step 4\. Basic Block \- Main Convolution\]**
+## **[4) BasicBlockV1]**
 
-ResNet의 기본 블록 내에서 특징을 추출하는 3x3 합성곱 층을 정의합니다.
+### **1. Convolution**
 
-* **코드**  
-  * `nn.Conv2d()`  
-* **패턴**  
-  * `bias=False` : BatchNorm 사용 시 편향(bias) 제거  
-  * `padding=1` : 3x3 커널에서 크기 유지를 위해 필수  
-* **코드 사용법**  
-  * 커널 크기 3, 패딩 1을 사용하여 입력과 출력의 해상도가 유지되도록 설정합니다. (Stride가 1일 경우)  
-  * 바로 뒤에 `BatchNorm`이 올 것이므로, `Conv2d`의 편향(bias) 파라미터는 메모리 낭비이므로 끄세요.  
-* **Shape 흐름**  
-  * **Input:** `[32, 64, 56, 56]`  
-  * **Conv 3x3 (s=2):**  
-  * **Output:** `[32, 128, 28, 28]`
+- **코드**
+    - `nn.Conv2d()`
+- **패턴**
+    - `nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)`
+- 설명: ResNet의 기본 블록 내에서 이미지의 특징을 추출하는 가장 핵심적인 연산입니다. 3x3 크기의 커널을 사용하여 공간적인 특징을 훑으며, `stride` 설정에 따라 해상도를 유지하거나 줄이면서 채널 수를 확장합니다.
+- **코드 사용법**
+    - **`bias=False`**: 합성곱 층 바로 뒤에 `BatchNorm`이 배치될 경우, `BatchNorm` 내부의 학습 가능한 파라미터가 편향(bias)의 역할을 대신하므로 메모리와 연산 효율을 위해 반드시 꺼주어야 합니다.
+    - **`padding=1`**: 3x3 커널을 사용할 때, `stride=1`인 상황에서 입력과 출력의 해상도를 동일하게 유지하기 위해 필수적으로 설정해야 합니다.
+- **Shape 흐름**
+    - **Input**: `[32, 64, 56, 56]`
+    - **Conv 3x3 (s=2)**: `stride=2`가 적용되면 가로와 세로 해상도가 각각 절반으로 줄어듭니다.
+    - **Output**: `[32, 128, 28, 28]`(채널은 늘어나고 해상도는 압축된 형태)
 
----
+### 2. **BatchNorm2d**
 
-### **\[Step 5\. Basic Block \- Shortcut Logic (Branching)\]**
+- 코드
+    - `nn.BatchNorm2d()`
+- **패턴**
+    - `nn.BatchNorm2d(out_channels)`
+- 설명:  채널별로 데이터의 분포를 평균 0, 분산 1이 되도록 정규화하여 학습 속도를 높이고 수렴을 안정화합니다. 네트워크가 깊어져도 하위 층의 파라미터 변화가 상위 층에 미치는 영향을 줄여줍니다.
+- **코드 사용법**
+    - **위치 선정**: 일반적으로 `Conv2d` 연산 바로 뒤, `ReLU` 활성화 함수 앞에 위치합니다.
+    - **모드 전환**: 학습 시와 평가 시 동작이 다르므로, 평가 시에는 반드시 `model.eval()`을 호출해 이동 평균을 사용하도록 해야 합니다.
+- **Shape 흐름**
+    - **Input**: `[32, 128, 28, 28]`
+    - **BN**: 채널별 통계량을 계산하여 데이터의 스케일을 조정하지만 차원 자체는 변하지 않습니다.
+    - **Output**: `[32, 128, 28, 28]`(채널은 늘어나고 해상도는 압축된 형태)
 
-블록의 초기화 단계에서, 입력 데이터가 변형(Identity) 없이 통과할지, 혹은 차원을 맞춰야 할지 결정하는 로직입니다.
+### 3. **ReLU**
 
-* **코드**  
-  * `nn.Identity()` : 입력을 그대로 반환하는 레이어  
-  * `if/else` 조건문  
-* **패턴**  
-  * `layer = nn.Identity()` : 아무 연산도 하지 않음  
-  * `if condition:` : 조건에 따른 분기 처리  
-* **코드 사용법**  
-  * 두 가지 조건을 검사하세요.  
-    * 공간 크기가 줄어드는가? (`stride != 1`)  
-    * 채널 수가 변하는가? (`in_channels != out_channels`)  
-  * 두 조건 모두 해당하지 않는다면(변화 없음), 연산 비용이 없는 `Identity`를 할당합니다.  
-  * 하나라도 해당한다면, 앞서 구현한 \*\*Shortcut 모듈(Step 1\~3)\*\*을 할당하여 차원을 맞춰줍니다.  
-* **Shape 흐름**  
-  * **Main Path Output:** `[B, C_out, H', W']`  
-  * **Shortcut Output:** `[B, C_out, H', W']` (반드시 위와 같아야 함)
+- 코드
+    - `nn.ReLU()`
+- **패턴**
+    - `nn.ReLU(inplace=True)`
+- 설명: 음수 값을 0으로 만드는 간단한 연산을 통해 네트워크에 비선형성을 부여합니다. 층이 깊어져도 기울기가 소실되지 않고 잘 전달되도록 돕는 일등 공신입니다.
+- **코드 사용법**
+    - **`inplace=True`**: 새로운 메모리를 할당하지 않고 기존 텐서의 값을 직접 수정하여 메모리 효율을 높이지만, 원본 데이터가 필요할 경우 값이 덮어씌워질 수 있으므로 주의가 필요합니다.
+    - **최종 활성화**: 블록의 마지막 ReLU는 반드시 Shortcut 합산 연산이 끝난 후에 적용해야 합니다.
+- **Shape 흐름**
+    - **Input**: `[32, 64, 28, 28]`
+    - **ReLU**: 값의 범위만 조정(0 이상)할 뿐, 텐서의 크기에는 영향을 주지 않습니다.
+    - **Output**: `[32, 128, 28, 28]`(채널은 늘어나고 해상도는 압축된 형태)
 
----
+### **ShortCut**
 
-### **\[Step 6\. Basic Block \- Forward Pass (Residual Connection)\]**
-
-정의된 레이어들을 통과시키고, 원본 정보(Identity)와 추출된 정보(Convolution)를 더하는 단계입니다.
-
-* **코드**  
-  * `+` 연산자 : Element-wise Sum  
-  * `F.relu()` 또는 `nn.ReLU()`  
-* **패턴**  
-  * `out = layer(x)`  
-  * `out = out + residual`  
-* **코드 사용법**  
-  * **Shortcut 계산:** 입력 x를 Step 5에서 결정된 shortcut 레이어에 통과시켜 잔차(residual)를 준비합니다.  
-  * **Main Path 계산:** Conv \-\> BN \-\> ReLU \-\> Conv \-\> BN 순서로 연산합니다. (마지막 ReLU는 아직 적용하지 마세요.)  
-  * **Add:** Main Path의 결과와 Shortcut의 결과를 더합니다. 두 텐서의 Shape이 다르면 여기서 에러가 발생합니다.  
-  * **Final Activation:** 더한 값에 마지막으로 ReLU를 적용합니다.  
-* **Shape 흐름**  
-  * **Main Path:** `[32, 128, 28, 28]`  
-  * **Shortcut:** `[32, 128, 28, 28]`  
-  * **Result:** `[32, 128, 28, 28]`
-
----
-
-### **\[Step 7\. Model Stem \- Dataset Constraints\]**
-
-데이터셋(ImageNet vs CIFAR-10)의 이미지 크기에 따라 초기 진입부(Stem) 구조를 다르게 설계합니다.
-
-* **코드**  
-  * `nn.Sequential()`  
-  * `nn.MaxPool2d()`  
-* **패턴**  
-  * `nn.Sequential(layer1, layer2, ...)` : 레이어를 순차적으로 묶음  
-* **코드 사용법**  
-  * **ImageNet (224x224):** 이미지가 크므로 정보를 빠르게 압축해야 합니다. 7x7 Conv와 MaxPool을 사용하여 해상도를 1/4로 줄이세요.  
-  * **CIFAR (32x32):** 이미지가 매우 작습니다. 초반에 MaxPool을 쓰거나 stride를 크게 주면 정보가 소실됩니다. 3x3 Conv만 사용하여 해상도를 유지하세요.  
-  * **공통:** Conv 뒤엔 반드시 BN과 ReLU가 따라와야 학습이 진행됩니다.  
-* **Shape 흐름**  
-  * **Input Image:** `[32, 3, 224, 224]`  
-  * **Conv 7x7 (s=2):** `[32, 64, 112, 112]` (절반 감소)  
-  * **MaxPool 3x3 (s=2):** `[32, 64, 56, 56]` (다시 절반 감소)  
-  * **Final Stem Out:** `[32, 64, 56, 56]`
+- 코드
+    - `nn.Identity()` or `x`
+- **패턴**
+    - `out = out + identity`
+- 설명:  메인 경로의 결과 F(x)에 입력값 x를 그대로 더해주는 과정입니다. 모델이 입력과 출력의 차이인 잔차만을 학습하게 하여 최적화를 훨씬 쉽게 만들어줍니다.
+- **코드 사용법**
+    - **Shape 일치**: 두 텐서의 가로, 세로, 채널 크기가 1이라도 다르면 런타임 에러가 발생합니다. 차원이 다를 때는 앞서 배운 `Option A`나 `Option B`를 통해 반드시 형태를 맞춰야 합니다.
+    - **합산 시점**: 두 번째 `BatchNorm`을 통과한 직후, 그리고 마지막 `ReLU`를 통과하기 직전에 수행합니다.
+- **Shape 흐름**
+    - **Main Path Output (F(x))**: `[32, 128, 28, 28]`
+    - **Shortcut Output (x)**: `[32, 128, 28, 28]`
+    - **Addition (F(x) + x)**: 두 텐서가 원소별로 합쳐지며 동일한 차원을 유지합니다.
+    - **Final Output**: `[32, 128, 28, 28]`
 
 ---
 
-### **\[Step 8\. Layer Stacking \- State Management\]**
+## **[5) ResNetV1]**
 
-여러 개의 블록을 쌓으면서 채널 수가 변할 때, 모델의 내부 상태(`self.in_channels`)를 관리하는 로직입니다.
+### 1. **Model Stem**
 
-* **코드**  
-  * `list.append()`  
-  * `block.expansion` : 블록 타입별 채널 확장 비율 (BasicBlock=1, Bottleneck=4)  
-* **패턴**  
-  * `layers.append(item)` : 리스트에 요소 추가  
-  * `self.var = new_value` : 클래스 멤버 변수 갱신  
-* **코드 사용법**  
-  * **First Block:** 레이어의 첫 번째 블록은 stride를 적용하고 채널을 변경할 수 있습니다.  
-  * **State Update (Trap 주의):** 첫 블록을 생성한 직후, 다음 블록들이 사용할 입력 채널 수(`self.in_channels`)를 (출력 채널 × 확장 비율)로 갱신해야 합니다. 이 갱신을 누락하면 다음 레이어 생성 시 차원 불일치가 발생합니다.  
-  * **Remaining Blocks:** 나머지 블록들은 stride=1로 고정하여 쌓습니다.  
-* **Shape 흐름**  
-  * **Layer 1 Start:** `[B, 64, H, W]`  
-  * **Layer 2 Start:** `[B, 128, H/2, W/2]` (채널 2배, 크기 1/2)
+- **코드**
+    - `nn.Sequential()`
+    - `nn.MaxPool2d()`
+- **패턴**
+    - `nn.Sequential(nn.Conv2d(...), nn.BatchNorm2d(...), nn.ReLU(...))`
+- **설명:**  데이터셋의 크기에 따라 전략이 달라집니다. 큰 이미지(ImageNet)는 정보를 빠르게 요약하고, 작은 이미지(CIFAR)는 정보 손실을 막기 위해 조심스럽게 시작합니다.
+- **코드 사용법**
+    - **CIFAR (32x32)**: 이미지가 작으므로 `MaxPool`을 생략하고 3x3 Conv로 시작하여 해상도를 최대한 보존합니다.
+    - **ImageNet (224x224)**: 7 x7 Conv와 `MaxPool`을 사용하여 해상도를 초기 단계에서 1/4로 과감하게 줄입니다.
+- **Shape 흐름**
+    - **Input**: `[32, 3, 32, 32]`
+    - **Out**: `[32, 16, 32, 32]`
 
----
+### 2. **Layer Stacking**
 
-### **\[Step 9\. Final Classification\]**
+- **코드**
+    - `list.append()`
+    - `block.expansion`
+- **패턴**
+    - `layers.append(item)` : 리스트에 블록 요소 추가
+    - `self.in_channels = new_value` : 다음 블록을 위해 입력 채널 수 갱신
+- **설명:** 스테이지가 바뀔 때 채널이 늘어나면, 모델은 "이제부터 들어올 데이터의 채널은 이만큼이다"라고 기억해둬야 합니다. 이 업데이트를 누락하면 다음 블록을 만들 때 차원 불일치 에러가 발생합니다.
+- **코드 사용법**
+    - **First Block**: 레이어의 첫 번째 블록에서만 `stride`를 적용해 해상도를 줄이고 채널을 확장합니다.
+    - **State Update (Trap 주의)**: 첫 블록을 만든 직후, `self.in_channels`를 **(출력 채널 × expansion)** 값으로 반드시 갱신해야 합니다.
+    - **Remaining Blocks**: 나머지 블록들은 `stride=1`로 고정하여 동일한 크기를 유지하며 쌓습니다.
+- **Shape 흐름**
+    - **Layer 1 Start**: `[32, 64, 56, 56]`
+    - **Layer 2 Start**: `[32, 128, 28, 28]`
 
-공간 정보를 압축하고 클래스 확률을 출력하는 마지막 단계입니다.
+### 3. **Final Classification**
 
-* **코드**  
-  * `nn.AdaptiveAvgPool2d()` : 출력 크기 강제 고정  
-  * `torch.flatten()` : 1차원으로 펼치기  
-  * `nn.Linear()` : 분류기  
-* **패턴**  
-  * `pool((1, 1))` : 어떤 크기가 들어와도 1x1로 만듦  
-  * `flatten(x, 1)` : 배치(0번) 차원을 제외하고 모두 핌  
-* **코드 사용법**  
-  * **Global Pooling:** 특징 맵의 가로/세로 크기에 상관없이 1x1 크기의 특징 벡터 하나로 압축합니다.  
-  * **Flatten:** 완전 연결 층(Linear)에 넣기 위해 2D 이미지를 1D 벡터로 폅니다.  
-  * **Classifier:** 최종 클래스 개수만큼의 출력을 가지는 선형 레이어를 통과시킵니다.  
-* **Shape 흐름**  
-  * **Last Layer Out:** `[32, 512, 7, 7]` (가정)  
-  * **AvgPool:** `[32, 512, 1, 1]` (공간 정보 삭제)  
-  * **Flatten:** `[32, 512]` (벡터화)  
-  * **Linear:** `[32, 1000]`
-
+- **코드**
+    - `nn.AdaptiveAvgPool2d()`
+    - `torch.flatten()`
+    - `nn.Linear()`
+- **패턴**
+    - `pool((1, 1))`
+    - `flatten(x, 1)`
+- **설명:** 수많은 특징 값들을 전역 평균 풀링으로 요약하여 위치 정보에 유연하게 대응하게 만든 뒤, 분류기에 전달하여 정답을 맞힙니다.
+- **코드 사용법**
+    - **Global Pooling**: 가로/세로 크기를 1x1로 만들어 특징 맵 전체의 평균적인 경향성을 추출합니다.
+    - **Flatten**: 2D 형태의 이미지를 1D 벡터로 펴서 `Linear` 레이어에 입력 가능한 형태로 만듭니다.
+    - **Classifier**: 클래스 개수만큼의 출력 노드를 설정합니다.
+- **Shape 흐름**
+    - **Last Layer Out**: `[32, 512, 7, 7]`
+    - **AvgPool**: `[32, 512, 1, 1]`
+    - **Flatten**: `[32, 512]`
+    - **Linear**: `[32, 1000]`
