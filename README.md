@@ -27,6 +27,9 @@ A.ing 주니어 트랙 ResNet 세션은 ResNet에 대한 근본적인 이해를 
 | 3 | 실험 | 구현된 코드, 새 데이터 | 하이퍼파라미터 튜닝 및 리그전 |
 | 4 | 정리 | 실험 데이터 기록 | 1등 팀의 전략 발표 및 로그 분석 |
 
+## Paper Link
+
+https://arxiv.org/abs/1512.03385
 
 ## Folder Structure
 ```text
