@@ -39,6 +39,7 @@ https://arxiv.org/abs/1512.03385
 ├─ readme.md
 ├─ Week 1
 │    ├─ A.ing_resnet_cheat_sheet.md
+│    ├─ A.ing_resnet_week1_appendix.md
 │    ├─ resnet_questions_sample_answer.md
 │    └─ resnet_questions.md
 ├─ Week 2
