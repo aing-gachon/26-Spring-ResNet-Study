@@ -1,14 +1,38 @@
 # ResNet (He et al., 2016) 핵심 Q&A 정리
 
-## 1) Degradation 문제는 Overfitting과 어떻게 다른가?
+문항은 [퀴즈](resnet_questions.md). 각 절의 `> 허브:` 표기는 [논문 가이드](resnet_paper_guide.md)의 R 항목을 가리킨다.
+
+`> 근거:` 줄은 [퀴즈](resnet_questions.md)의 같은 문항과 동일한 좌표다 — 개념은 [치트시트](A.ing_resnet_cheat_sheet.md) `[CS§n]`, 구현은 [쿡북](../Week%202/resnet_cookbook.md) `[Cn-m]`, 코드는 노트북 `[N-k]`.
+
+
+[source: sources/resnet-study/Week 1/resnet_questions_sample_answer.md]
+
+## 1) Degradation 문제는 Overfitting과 어떻게 다릅니까?  `[A1]`
+
+> 허브: [R02] [R10]
+> 근거: [CS§0] · 노트북 마지막 degradation 재현 셀
 
 ### 핵심 구분
+
+> 허브: [R02]
 
 - **Overfitting(과적합)**: 보통 **training error는 계속 내려가는데**, **test error(또는 generalization)가 악화**되는 현상.
 - **Degradation(성능 저하)**: 깊이를 늘릴수록 **training error 자체가 더 높아지는** 현상.
 즉, 데이터에 과적합되기 전에 **학습(최적화) 자체가 잘 안 되는 최적화 실패**를 의미한다.
 
+**Figure 1에서 읽는 값** (CIFAR-10, plain net) — 허브 [R02]의 빈칸은 이 값으로 채운다:
+
+| | 20층 | 56층 |
+| --- | --- | --- |
+| training error | 약 5% 부근에서 안정 | 약 8% 부근 (**더 높음**) |
+| test error | 약 9% | 약 11% (**더 높음**) |
+
+핵심은 정확한 소수점이 아니라 **부등호 방향이 train·test 양쪽에서 같다**는 것이다.
+overfitting이면 train은 56층이 더 **낮아야** 하는데 그렇지 않다.
+
 ### 왜 “학습이 안 되는 문제(optimization issue)”인가?
+
+> 허브: [R10]
 
 - 깊은 네트워크는 **추가된 층이 최소한 identity mapping을 학습**할 수 있다면,
 얕은 네트워크가 구현 가능한 함수를 **그대로 포함**할 수 있어야 한다.
@@ -18,7 +42,10 @@
 degradation이 overfitting이 아니라 **최적화 문제**라는 핵심 근거다.
 
 
-## 2) H(x) 대신 F(x)=H(x)−x를 학습하면 왜 더 쉬운가?
+## 2) H(x) 대신 F(x)=H(x)−x를 학습하면 왜 더 쉽습니까?  `[A2]`
+
+> 허브: [R03] [R04]
+> 근거: [CS§0] (특히 "왜 쉬운 해인가" 항목) · [C3-2]
 
 논문은 원하는  mapping을 `H(x)`라 두고, residual을 `F(x)=H(x)−x`로 재정의하여:
 
@@ -28,7 +55,9 @@ degradation이 overfitting이 아니라 **최적화 문제**라는 핵심 근거
 
 ### (1) 최적의 해가 identity mapping(H(x)=x)일 때, 왜 F(x)=0이 더 쉬운가?
 
-- `H(x)=x`가 최적이라면, plain net은 여러 층이이 **정교하게 항등함수(identity)**를 구현해야 한다.
+> 허브: [R04]
+
+- `H(x)=x`가 최적이라면, plain net은 여러 층이 **정교하게 항등함수(identity)**를 구현해야 한다.
 - 반면 ResNet에서는 목표가 **“정답을 새로 만들기”가 아니라“변화분(residual)이 0이면 된다”**, 즉 `F(x)=0`으로 바뀐다.
 - 최적화 관점에서 이는 문제의 재파라미터화인 **re-parameterization**로 볼 수 있다.
     - identity에 가까운 해를 찾기 위해 굳이 복잡한 층들을 맞추기보다,
@@ -36,22 +65,33 @@ degradation이 overfitting이 아니라 **최적화 문제**라는 핵심 근거
 
 ### (2) 이 논증이 degradation 문제와 어떻게 연결되는가?
 
+> 허브: [R03] [R02]
+
 - degradation은 “깊은 plain net이 (적어도 일부 구간에서) 사실상 identity를 구현하면 되는 상황에서도
 그 해를 잘 못 찾는 최적화 실패”로 해석할 수 있다.
 - residual 재정의(`H→F`)는 이 상황에서 해 공간을 **identity 근방으로 정렬**해 주는 효과가 있어,
 optimizer가 **‘학습하기 쉬운 형태’**로 문제를 풀게 만들며 degradation을 완화한다.
 
-### (2 - a) 부연설명: 왜 Skip Connection을 하면 문제가 학습하기 쉬운 형태로 변하는가?
+> **심화 읽을거리 — 질문 아님.** 아래는 Q2의 문항이 아니라 부연이다.
+> 논문에 직접 적혀 있지 않은 논증이라 난이도가 튀어 문항에서 내렸고, 내용은 그대로 둔다.
+> He 초기화([R09])로 들어가는 진입점이기도 하다 — "0 근처로 초기화한다"가 이 논증의 전제다.
+
+### (2-a) 부연설명: 왜 Skip Connection을 하면 문제가 학습하기 쉬운 형태로 변하는가?
+
+> 허브: [R04] [R05]
 
 - 이를 설명하기 위해 weight 초기화 방식 → Zero Matrix, Identity Matrix → Skip Connection → Conclusion 순서대로 생각해봅시다.
-1. weight 초기화 방식: 현재는 weigth matirx를 0 근처로 초기화시키는 방식이 과적합을 방지하는 데에 유리합니다. Input이 weigth와 곱해졌을 때 값이 크게 변하지 않게 유지하는게 핵심입니다.
+1. weight 초기화 방식: 현재는 weight matrix를 0 근처로 초기화시키는 방식이 과적합을 방지하는 데에 유리합니다. Input이 weight와 곱해졌을 때 값이 크게 변하지 않게 유지하는게 핵심입니다.
 2. Zero Matrix, Identity Matrix: 먼저 Zero Matrix란 모든 요소가 0인 Matrix입니다. Identity Matrix란 Zero Matrix에서 왼쪽 위에서 오른쪽 아래로 이어지는 대각선에만 1이 있는 Matrix 입니다. 어떤 양의 정수 m, n에 대하여 형태가 m * n인 행렬 A, n * n인 Zero Matrix Z와 n * n 인 Identity Matrix I를 생각해봅시다. A와 Z를 곱한 결과는 Z와 같다는 성질이 있습니다. 또 A와 I를 곱한 결과는 A와 같다는 성질이 있습니다. 
-3. Skip Connection: 현재 weigth를 초기화 하는 방식으로 weight를 초기화한 뒤 모델이 Input을 크게 변화시키지 않도록 학습시킨다고 해봅시다. 그럼 모델은 weight matrix를 Identity Matrix 와 비슷하게 변화시켜야 합니다. 이와 반대로 Input과 Output의 차이인 F가 0이 되도록 학습시킨다고 합시다. 그럼 모델은 초기화된 weight matrix를 자신과 비슷한 Zero Matrix와 비슷하게 변화시켜야 합니다.
-4. Conclusion: 위의 두 경우를 생각했을 때 차이 F를 학습하는 경우가 훨씬 수월합니다. 그리고 이를 위해 Skip Connection이 필요합니다. 그래서 Skip Connecntion을 적용한 경우가 학습이 쉬운겁니다.
+3. Skip Connection: 현재 weight를 초기화 하는 방식으로 weight를 초기화한 뒤 모델이 Input을 크게 변화시키지 않도록 학습시킨다고 해봅시다. 그럼 모델은 weight matrix를 Identity Matrix 와 비슷하게 변화시켜야 합니다. 이와 반대로 Input과 Output의 차이인 F가 0이 되도록 학습시킨다고 합시다. 그럼 모델은 초기화된 weight matrix를 자신과 비슷한 Zero Matrix와 비슷하게 변화시켜야 합니다.
+4. Conclusion: 위의 두 경우를 생각했을 때 차이 F를 학습하는 경우가 훨씬 수월합니다. 그리고 이를 위해 Skip Connection이 필요합니다. 그래서 Skip Connection을 적용한 경우가 학습이 쉬운겁니다.
 
 ---
 
-## 3) Shortcut Option A/B/C는 무엇이며, 논문은 왜 Option C를 버렸는가?
+## 3) Shortcut Option A/B/C는 무엇이며, 논문은 왜 Option C를 버렸습니까?  `[A3]`
+
+> 허브: [R08]
+> 근거: [CS§1] · [C1-1] [C1-2] [C2-1] · [N-1]~[N-6]
 
 차원이 유지될 때는 identity shortcut:
 
@@ -62,6 +102,8 @@ optimizer가 **‘학습하기 쉬운 형태’**로 문제를 풀게 만들며 
 하지만 **채널 수 증가 또는 spatial downsampling(stride=2 등)**이 발생하면 shortcut 설계가 달라진다.
 
 ### (1) Option A/B/C 정의
+
+> 허브: [R08] [R05]
 
 - **Option A (parameter-free)**
     - shortcut은 **identity 계열**을 유지한다.
@@ -77,6 +119,8 @@ optimizer가 **‘학습하기 쉬운 형태’**로 문제를 풀게 만들며 
 
 ### (2) 왜 Option C를 이후 실험에서 쓰지 않는가?
 
+> 허브: [R08] [R12]
+
 - Table 3에서 A/B/C 모두 plain 대비 큰 개선을 보이며, B가 A보다 약간 낫고 C가 B보다 아주 약간 더 낫다.
 - 하지만 논문은 C의 추가 이득이
     - “projection shortcut이 많아져서 생긴 **추가 파라미터 효과**”로 해석 가능하며,
@@ -86,12 +130,17 @@ optimizer가 **‘학습하기 쉬운 형태’**로 문제를 풀게 만들며 
 
 ---
 
-## 4) Bottleneck block은 왜 필요하며, 왜 identity shortcut이 특히 중요해지는가?
+## 4) Bottleneck block은 왜 필요하며, 왜 identity shortcut이 특히 중요해집니까?  `[A4]`
+
+> 허브: [R12]
+> 근거: [CS§3] · [C4-4]
 
 ResNet-34는 basic block(3×3, 3×3)을 쓰지만,
 ResNet-50/101/152는 bottleneck block(1×1, 3×3, 1×1)을 사용한다.
 
 ### (1) bottleneck에서 1×1 conv 두 개의 역할
+
+> 허브: [R12]
 
 - 첫 번째 1×1 conv: **채널 차원 축소(reduce)**
 → 비싼 3×3 conv를 “얇은 채널”에서 수행하게 하여 연산량을 줄인다.
@@ -99,6 +148,8 @@ ResNet-50/101/152는 bottleneck block(1×1, 3×3, 1×1)을 사용한다.
 → 블록 출력의 채널 수를 다음 stage 설계(표현력 요구)에 맞게 되돌린다.
 
 ### (2) “identity shortcut이 projection으로 바뀌면 복잡도가 2배”가 되는 이유
+
+> 허브: [R12] [R08]
 
 - bottleneck의 핵심 의도는 “가운데(3×3)를 얇게 만들어 비용을 절감”하는 것이다.
 - 그런데 shortcut까지 projection(학습 파라미터가 있는 1×1 conv)이 되면,
@@ -109,11 +160,16 @@ time complexity와 model size가 크게 증가(논문 표현: doubled)할 수 �
 
 ---
 
-## 5) CIFAR-10에서 6n+2 규칙은 어떻게 나오며, 왜 shortcut을 identity로 고정했는가?
+## 5) CIFAR-10에서 6n+2 규칙은 어떻게 나오며, 왜 shortcut을 identity로 고정했습니까?  `[A5]`
+
+> 허브: [R15]
+> 근거: [CS§5] · [C5-1] [C5-2] · [N-18]~[N-23]
 
 논문 4.2(CIFAR-10)는 intentionally simple한 구조로 “6n+2 weighted layers” 규칙을 사용한다.
 
 ### (1) 6n+2 유도
+
+> 허브: [R15] [R17]
 
 CIFAR-10용 ResNet은 다음으로 구성된다.
 
@@ -131,12 +187,16 @@ CIFAR-10용 ResNet은 다음으로 구성된다.
 
 ### (2) shortcut이 3n개가 되는 이유
 
+> 허브: [R15] [R16]
+
 - shortcut은 residual unit마다 1개씩 붙는다.
 - residual unit은 “3×3 conv 두 개가 한 쌍”인 구조이며,
 - stage가 3개이고 stage마다 unit이 n개이므로:
 - `3 stages × n units = 3n shortcuts`
 
 ### (3) CIFAR-10에서는 왜 모든 shortcut을 identity(option A)로 고정했는가?
+
+> 허브: [R15] [R08]
 
 - 논문은 CIFAR-10에서 **extremely deep network의 behavior를 분석**하는 목적이 강하다.
 - residual vs plain 비교에서 변수를 최소화하려면,
