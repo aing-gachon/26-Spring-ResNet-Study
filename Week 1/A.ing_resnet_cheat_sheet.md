@@ -1,6 +1,6 @@
 # ResNet / Residual Learning Cheat Sheet
 
-각 절의 `> 허브:` 표기는 [논문 가이드](resnet_paper_guide.md)의 R 항목을 가리킵니다. 구현 API는 [쿡북](../Week%202/resnet_cookbook.md), 자기점검은 [퀴즈](resnet_questions.md), 코드는 `노트북_빈칸.ipynb` 참고. 시작 전 배경은 [선수자료](resnet_prerequisites.md).
+각 절의 `> 허브:` 표기는 [논문 가이드](resnet_paper_guide.md)의 R 항목을 가리킵니다. 구현 API는 [쿡북](../Week%202/resnet_cookbook.md), 자기점검은 [퀴즈](resnet_questions.md), 코드는 [빈칸 노트북](../Week%202/Aing_resnet_from_scratch_blank.ipynb) 참고. 시작 전 배경은 [선수자료](resnet_prerequisites.md).
 
 이 문서의 각 절은 `[CS§n]`이라는 좌표를 갖습니다. 본문 중 `[Cn-m]`은 [쿡북](../Week%202/resnet_cookbook.md) 절, `[N-k]`는 노트북 빈칸, `[Qn]`은 [퀴즈](resnet_questions.md) 문항을 가리킵니다 — 대괄호 한 겹이라 링크가 아니라 **좌표**입니다.
 

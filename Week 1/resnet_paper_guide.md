@@ -8,7 +8,7 @@
 ## 이 폴더의 문서
 
 시작 전 배경은 [선수자료](resnet_prerequisites.md). 개념 요약은 [치트시트](A.ing_resnet_cheat_sheet.md), 구현 API는 [쿡북](../Week%202/resnet_cookbook.md),
-확인 문제는 [퀴즈](resnet_questions.md)와 [퀴즈_모범답안](resnet_questions_sample_answer.md). 노트북 두 개는 `자료/` 폴더에 있습니다.
+확인 문제는 [퀴즈](resnet_questions.md)와 [퀴즈_모범답안](resnet_questions_sample_answer.md). 노트북은 [빈칸](../Week%202/Aing_resnet_from_scratch_blank.ipynb)과 [정답](../Week%202/Aing_resnet_from_scratch_answer.ipynb), 튜닝은 [리그전](../Week%203/Aing_league_ResNet_CIFAR10.ipynb).
 
 ## 참조 문법
 
