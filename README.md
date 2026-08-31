@@ -85,9 +85,9 @@ https://arxiv.org/abs/1512.03385
 
 | 이름 | 이메일 |
 |------|--------|
+| 문예훈 (자료 제작 총괄) | hoobhoob04@gachon.ac.kr |
 | 정진용 | wlsdyd5373@gachon.ac.kr |
-| 문예훈 | hoobhoob04@gachon.ac.kr |
-
+| 전지우 | jiwoo424@gachon.ac.kr |
 질문이나 도움이 필요하면 언제든 연락 주세요!<br>
 한 학기 동안 함께 열심히 공부해봅시다!
 
